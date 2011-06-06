@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README.pod
+t/Router-PathInfo.t
+lib/Router/PathInfo.pm
