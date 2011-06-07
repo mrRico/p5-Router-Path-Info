@@ -1,5 +1,10 @@
 use Test::More;
 
+#my $qwer="lala"; my $var = 0;
+#local $_= 0;
+#$qwer=~ /(?{$_=5})/;
+#print $^R,"\n";
+
     pass('*' x 10);
     pass('Router::PathInfo::Controller');
     
@@ -25,7 +30,7 @@ use Test::More;
     
     # matching
     can_ok($r,'match');
-    my $env = {PATH_INFO => '/foo/baz/bar'};
+    my $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};
     $env->{'psgix.RouterPathInfo'} = {
         segment => [split('/', $env->{PATH_INFO}, -1)]
     };
@@ -40,9 +45,41 @@ use Test::More;
     is($res->{segment}->[0], 'baz', 'check segment 1');
     is($res->{segment}->[1], 'bar', 'check segment 2');
     
-    $env = {PATH_INFO => '/foo/baz/bar/'};
-    my $res = $r->match($env);
+    $env = {PATH_INFO => '/foo/baz/bar/', REQUEST_METHOD => 'GET'};
+    $res = $r->match($env);
     is($res, undef, 'check not matched PATH_INFO');
+    
+    # check rest (rebuild index now not supported)
+    $r = Router::PathInfo::Controller->new();
+    $r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']);    
+    $r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some_rest','bar'], methods => ['GET','DELETE']);
+    
+    $r->build_search_index;
+    
+    $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};
+    $env->{'psgix.RouterPathInfo'} = {
+        segment => [split('/', $env->{PATH_INFO}, -1)]
+    };
+    $res = $r->match($env);
+    
+    use Router::Simple;
+    my $router = Router::Simple->new();
+    $router->connect('/foo/bar/:int', {controller => 'ClassInt', action => 'int_on_3'});
+    $router->connect('/foo/baz/:sd', {controller => 'ClassInt', action => 'int_on_2'});    
+    
+#    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
+#    
+#    #$DB::signal = 1;
+#    use Benchmark qw(:all) ;
+#    cmpthese timethese(
+#     -1, 
+#        { 
+#            My => sub {$r->match($_) for @env}, 
+#            Other => sub {$router->match($_) for @env} 
+#        } 
+#     );    
+        
+    
     
     pass('*' x 10);
     print "\n";
