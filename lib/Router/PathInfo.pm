@@ -115,35 +115,49 @@ sub new {
     return $singleton if ($as_singletone and $singleton);
     
     my $class = shift;
-    if (@_ % 2) {
-        carp "wrong passed arguments";
-        return;
-    }
     my $param = {@_};
     
     my $self = bless {
-        static      => UNIVERSAL::isa($param->{static}, 'HASH') ? Router::PathInfo::Static->new(%{delete $param->{static}}) : undef,
+        static      => UNIVERSAL::isa($param->{static}, 'HASH')     ? Router::PathInfo::Static->new(%{delete $param->{static}}) : undef,
         controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new(),
-        cacher      => undef
+        cacher      => $param->{cacher} ? Router::PathInfo::Cacher->new(cacher => $param->{cacher}, ns_prefix => $param->{cacher_ns_prefix}) : undef
     }, $class;
-    
-    if ($param->{cacher}) {
-        $self->{cacher} =  Router::PathInfo::Cacher->new(cacher => $param->{cacher}, namespace => $self->_rules_md5);
-    };
     
     $singleton = $self if $as_singletone;
      
     return $self;
 }
 
-sub _rules_md5 {
+sub build_search_index {
+    my $self = shift;
+    # строим индекс
+    my $res = $self->{controller}->build_search_index();
+    # если правила не были добавлены, то скипаем объект, чтобы он не мешал в матче
+    $self->{controller} = undef unless $res;
+    # запоминаем в кешере 
+    $self->{cacher}->namespace($self->_rules_ns) if $self->{cacher};
+    
+    return 1;
+}
+
+sub _rules_ns {
 	my $self = shift;
-	my $str = $self->{controller}->_rules_md5;
+	
+	my $str = '';
+	$str .= $self->{controller}->_rules_md5;
 	$str .= $self->{static}->_rules_md5 if $self->{static};
 	
 	return md5_hex($str);
 }
 
+sub add_rule {
+    my $self = shift;
+    if ($self->{controller}) {
+        $self->{controller}->add_rule(@_);
+    } else {
+        carp "controller not defined";
+    }
+}
 
 =head1 SINGLETON
 
@@ -185,62 +199,53 @@ sub clear_singleton {undef $singleton}
 =cut
 sub match {
     my $self = shift; 
-    my $url  = shift;
-    my $method  = shift;
+    my $env  = shift;
     
-    # job with URI object only
-    my $uri = UNVERSAL::isa($url,'URI') ? $url : URI->new($url);
-    
-    # clear uri inside: /foo///bar/ -> /foo/bar/
-    my @segment = $uri->path_segments;
-    my $root = shift @segment;
-    my $last_segment = pop @segment;
-    @segment = grep {length $_} @segment;
-    unless (@segment) {
-        @segment = $root; 
+    unless (ref $env) {
+        $env = {PATH_INFO => $env, REQUEST_METHOD => 'GET'};
     } else {
-        unshift @segment, $root; 
-        push @segment, $last_segment if defined $last_segment;
+        $env->{REQUEST_METHOD} ||= 'GET';
     }
-    $uri->path_segments(@segment);
     
     my $match = undef;
     
-    # set defult http method - GET
-    $method ||= 'GET';
-    # uppercase http method
-    $method = uc $method;
-    # check method
-    unless (Router::PathInfo::Base::Rule->allow_http_methods->{$method}) {
-        $match = Router::PathInfo::Match::Error->new(code => 405, message => "Method Not Allowed");
-    }
+    $match = {
+      type  => 'error',
+      value => [400, ['Content-Type' => 'text/plain', 'Content-Length' => 11], ['Bad Request']],
+      desc  => '$env->{PATH_INFO} not defined'  
+    } unless $env->{PATH_INFO};
+    
+    $env->{'psgix.RouterPathInfo'} = {
+        segment => [split('/', $env->{PATH_INFO}, -1)]
+    };
     
     # check in cache
-    if (not $match and $self->cacher) {
-        $match = $self->cacher->match($uri, $method);
-        if ($match and not UNIVERSAL::isa($match, 'Router::PathInfo::Match::Error')) {
-            $self->controller->_incr($match->{_meta}) if ref $match->{_meta};
-        };
+    if (not $match and $self->{cacher}) {
+        $match = $self->{cacher}->match($env);
+        return $match if $match;
     };
     
     # check in static
-    if (not $match and $self->static) {
-        $match = $self->static->match($uri);
+    if (not $match and $self->{static}) {
+        $match = $self->{static}->match($env);
     }
     
     # check in controllers
-    if (not $match and $self->controller) {
-        $match = $self->controller->match($uri, $method);
-        if ($match and not UNIVERSAL::isa($match, 'Router::PathInfo::Match::Error')) {
-            $self->controller->_incr($match->{_meta}) if ref $match->{_meta};
-        };
+    if (not $match and $self->{controller}) {
+        $match = $self->{controller}->match($env);
     }    
     
     # not found?
-    $match ||= Router::PathInfo::Match::Error->new(code => 404, message => "Not found");
+    $match ||= {
+      type  => 'error',
+      value => [404, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Not found']],
+      desc  => sprintf('not found for PATH_INFO = %s with REQUEST_METHOD = %s', $env->{PATH_INFO}, $env->{REQUEST_METHOD}) 
+    };
     
     # set in cache
-    $self->cacher->set_match($uri, $method, $match) if $self->cacher;
+    $self->{cacher}->set_match($env, $match) if $self->{cacher};
+    
+    delete $env->{'psgix.RouterPathInfo'};
     
     # match is done
     return $match;
