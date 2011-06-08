@@ -1,5 +1,47 @@
 use Test::More;
 
+use re 'eval';
+my $qwer="lala";
+#my $re = qr/l(?{$r++})/s;
+ff($qwer);
+ff('lodo');
+kk();
+kk();
+sub ff {
+#    my $r = 1;
+#    my $re = sprintf 'l(?{%s++})', '$r';
+#    my $t = shift;
+#    do { use re 'eval';  $t =~ /$re/xs };
+#    #$t =~ /$re/xs;
+#    #$qwer =~ $re;
+#    print $r,"\n";
+    use re 'eval';
+    my $res = 0;
+    $_ = 'a' x 8;
+  m< 
+     (?{ $cnt = 0 })                    # Initialize $cnt.
+     (
+       a 
+       (?{
+           local $cnt = $cnt + 1;       # Update $cnt, backtracking-safe.
+       })
+     )*  
+     aaaa
+     (?{ $res = $cnt })                 # On success copy to non-localized
+                                        # location.
+   >x;
+   no re 'eval';
+    print $res,"\n";
+}
+sub kk {
+    my $r = 1;
+    $qwer=~ /l(?{$r++})/s;
+    #$qwer =~ $re;
+    print $r,"\n";
+}
+
+$DB::signal = 1;
+
 #my $qwer="lala"; my $var = 0;
 #local $_= 0;
 #$qwer=~ /(?{$_=5})/;
@@ -67,17 +109,22 @@ use Test::More;
     $router->connect('/foo/bar/:int', {controller => 'ClassInt', action => 'int_on_3'});
     $router->connect('/foo/baz/:sd', {controller => 'ClassInt', action => 'int_on_2'});    
     
-#    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
-#    
-#    #$DB::signal = 1;
-#    use Benchmark qw(:all) ;
-#    cmpthese timethese(
-#     -1, 
-#        { 
-#            My => sub {$r->match($_) for @env}, 
-#            Other => sub {$router->match($_) for @env} 
-#        } 
-#     );    
+#    for (1..100) {
+#        $r->add_rule(connect => '/foo/bar/baz/doz/'.$_, action => ['some_rest','bar']);
+#        $router->connect('/foo/bar/baz/doz/'.$_, {controller => 'ClassInt', action => 'int_on_2'});
+#    }
+    
+    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
+    
+    #$DB::signal = 1;
+    use Benchmark qw(:all) ;
+    cmpthese timethese(
+     -1, 
+        { 
+            My => sub {$r->match($_) for @env}, 
+            Other => sub {$router->match($_) for @env} 
+        } 
+     );    
         
     
     
