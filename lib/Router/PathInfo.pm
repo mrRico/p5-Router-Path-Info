@@ -215,8 +215,10 @@ sub match {
       desc  => '$env->{PATH_INFO} not defined'  
     } unless $env->{PATH_INFO};
     
-    $env->{'psgix.RouterPathInfo'} = {
-        segment => [split('/', $env->{PATH_INFO}, -1)]
+    my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => @segment 
     };
     
     # check in cache
@@ -245,7 +247,7 @@ sub match {
     # set in cache
     $self->{cacher}->set_match($env, $match) if $self->{cacher};
     
-    delete $env->{'psgix.RouterPathInfo'};
+    delete $env->{'psgix.tmp.RouterPathInfo'};
     
     # match is done
     return $match;

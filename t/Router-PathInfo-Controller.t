@@ -1,52 +1,5 @@
 use Test::More;
 
-use re 'eval';
-my $qwer="lala";
-#my $re = qr/l(?{$r++})/s;
-ff($qwer);
-ff('lodo');
-kk();
-kk();
-sub ff {
-#    my $r = 1;
-#    my $re = sprintf 'l(?{%s++})', '$r';
-#    my $t = shift;
-#    do { use re 'eval';  $t =~ /$re/xs };
-#    #$t =~ /$re/xs;
-#    #$qwer =~ $re;
-#    print $r,"\n";
-    use re 'eval';
-    my $res = 0;
-    $_ = 'a' x 8;
-  m< 
-     (?{ $cnt = 0 })                    # Initialize $cnt.
-     (
-       a 
-       (?{
-           local $cnt = $cnt + 1;       # Update $cnt, backtracking-safe.
-       })
-     )*  
-     aaaa
-     (?{ $res = $cnt })                 # On success copy to non-localized
-                                        # location.
-   >x;
-   no re 'eval';
-    print $res,"\n";
-}
-sub kk {
-    my $r = 1;
-    $qwer=~ /l(?{$r++})/s;
-    #$qwer =~ $re;
-    print $r,"\n";
-}
-
-$DB::signal = 1;
-
-#my $qwer="lala"; my $var = 0;
-#local $_= 0;
-#$qwer=~ /(?{$_=5})/;
-#print $^R,"\n";
-
     pass('*' x 10);
     pass('Router::PathInfo::Controller');
     
@@ -60,11 +13,11 @@ $DB::signal = 1;
     
     # added rule
     can_ok($r,'add_rule');
-    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']), 1, 'check add_rule');
+    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:any', method => 'GET',action => ['some','bar']), 1, 'check add_rule');
         
     # create index
-    can_ok($r,'build_search_index');
-    is($r->build_search_index, 1, 'check build_search_index');
+    #can_ok($r,'build_search_index');
+    #is($r->build_search_index, 1, 'check build_search_index');
     
     # check md5
     can_ok($r,'_rules_md5');
@@ -73,8 +26,11 @@ $DB::signal = 1;
     # matching
     can_ok($r,'match');
     my $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};
-    $env->{'psgix.RouterPathInfo'} = {
-        segment => [split('/', $env->{PATH_INFO}, -1)]
+    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => @segment 
     };
     my $res = $r->match($env); 
     
