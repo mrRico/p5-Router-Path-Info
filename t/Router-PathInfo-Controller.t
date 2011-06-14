@@ -13,12 +13,8 @@ use Test::More;
     
     # added rule
     can_ok($r,'add_rule');
-    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:any', method => 'GET',action => ['some','bar']), 1, 'check add_rule');
+    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']), 1, 'check add_rule');
         
-    # create index
-    #can_ok($r,'build_search_index');
-    #is($r->build_search_index, 1, 'check build_search_index');
-    
     # check md5
     can_ok($r,'_rules_md5');
     is(length $r->_rules_md5, 32, 'check _rules_md5');
@@ -30,7 +26,7 @@ use Test::More;
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
-        depth => @segment 
+        depth => scalar @segment 
     };
     my $res = $r->match($env); 
     
@@ -44,6 +40,12 @@ use Test::More;
     is($res->{segment}->[1], 'bar', 'check segment 2');
     
     $env = {PATH_INFO => '/foo/baz/bar/', REQUEST_METHOD => 'GET'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
+    };
     $res = $r->match($env);
     is($res, undef, 'check not matched PATH_INFO');
     
@@ -52,11 +54,12 @@ use Test::More;
     $r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']);    
     $r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some_rest','bar'], methods => ['GET','DELETE']);
     
-    $r->build_search_index;
-    
     $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};
-    $env->{'psgix.RouterPathInfo'} = {
-        segment => [split('/', $env->{PATH_INFO}, -1)]
+    @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
     };
     $res = $r->match($env);
     
@@ -71,8 +74,16 @@ use Test::More;
 #    }
     
     my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
+
+for (@env) {
+    my @segment = split '/', $_->{PATH_INFO}, -1; 
+    shift @segment;
+    $_->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
+    };
+}
     
-    #$DB::signal = 1;
     use Benchmark qw(:all) ;
     cmpthese timethese(
      -1, 

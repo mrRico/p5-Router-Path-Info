@@ -40,14 +40,21 @@ sub add_rule {
          };
     }
     
-    my $methods = $http_methods->{$args{method}} ? $args{method} : 'GET';
+    my @methods = ($args{method} and $http_methods->{$args{method}}) ? $args{method} : keys %$http_methods;
+    my $methods_weight = $#methods; 
+    
     my $sub_after_match = $args{match_callback} if ref $args{match_callback} eq 'CODE';
     
     my @depth = split '/',$args{connect},-1;
     
     my @segment = (); my $i = 0;
-    $self->{rule}->{$methods}->{$#depth} ||= {};
-    my $res = $self->{rule}->{$methods}->{$#depth};
+    
+    my $res = [];
+    for (@methods) {
+        $self->{rule}->{$_}->{$#depth} ||= {};
+        push @$res, $self->{rule}->{$_}->{$#depth};
+    }
+    
     (my $tmp = $args{connect}) =~ s!  
                 (/)(?=/)                    | # double slash
                 (/$)                        | # end slash
@@ -56,63 +63,32 @@ sub add_rule {
                 /(:any)(?= $|/)             | # any
                 /([^/]+)(?= $|/)              # eq
             !
-                if ($1 or $2) {
-                    if (ref $res eq 'ARRAY') {
-                        $_->{exactly}->{''} ||= {} for @$res;
-                        $res = [map {$_->{exactly}->{''}} @$res];
-                    } else {
-                        $res->{exactly}->{''} ||= {};
-                        $res = $res->{exactly}->{''};
-                    }
+                if ($1 or $2) {                    
+                    $_->{exactly}->{''} ||= {} for @$res;
+                    $res = [map {$_->{exactly}->{''}} @$res];
                 } elsif ($3) {
-                    if (ref $res eq 'ARRAY') {                        
-                        my @val = split('|',$3);
-                        my @tmp;
-                        for my $val (@val) {
-                            for (@$res) {
-                                $_->{exactly}->{$val} ||= {};
-                                push @tmp, $_->{exactly}->{$val}; 
-                            };
-                        }
-                        $res = [@tmp];
-                    } else {
-                        my @val = split('|',$3);
-                        my @tmp;
-                        for (@val) {
-                            $res->{exactly}->{$_} ||= {};
-                            push @tmp, $res->{exactly}->{$_};
-                        }
-                        $res = [@tmp];
+                    my @val = split('\|',$3);
+                    my @tmp;
+                    for my $val (@val) {
+                        for (@$res) {
+                            $_->{exactly}->{$val} ||= {};
+                            push @tmp, $_->{exactly}->{$val}; 
+                        };
                     }
+                    $res = [@tmp];
                     push @segment, $i;
                 } elsif ($4) {
                     $self->{re_compile}->{$4} = qr{$4}s;
-                    
-                    if (ref $res eq 'ARRAY') {
-                        $_->{regexp}->{$4} ||= {} for @$res;
-                        $res = [map {$_->{regexp}->{$4}} @$res];
-                    } else {
-                        $res->{regexp}->{$4} ||= {};
-                        $res = $res->{regexp}->{$4};
-                    }
+                    $_->{regexp}->{$4} ||= {} for @$res;
+                    $res = [map {$_->{regexp}->{$4}} @$res];
                     push @segment, $i;
                 } elsif ($5) {
-                    if (ref $res eq 'ARRAY') {
-                        $_->{default}->{''} ||= {} for @$res;
-                        $res = [map {$_->{default}->{''}} @$res];
-                    } else {
-                        $res->{default}->{''} ||= {};
-                        $res = $res->{default}->{''};
-                    }
+                    $_->{default}->{''} ||= {} for @$res;
+                    $res = [map {$_->{default}->{''}} @$res];
                     push @segment, $i;
                 } elsif ($6) {
-                    if (ref $res eq 'ARRAY') {
-                        $_->{exactly}->{$6} ||= {} for @$res;
-                        $res = [map {$_->{exactly}->{$6}} @$res];
-                    } else {
-                        $res->{exactly}->{$6} ||= {};
-                        $res = $res->{exactly}->{$6};
-                    }
+                    $_->{exactly}->{$6} ||= {} for @$res;
+                    $res = [map {$_->{exactly}->{$6}} @$res];
                 } else {
                     # default as word
                     croak "cant't resolve connect '$args{connect}'"
@@ -121,12 +97,13 @@ sub add_rule {
             !gex;
         
         my $has_segment = @segment;
-        if (ref $res eq 'ARRAY') {
-            $_->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match] for @$res;
-        } else {
-            $res->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match];
+        for (@$res) {
+            if (not $_->{match} or $_->{match}->[3] >= $methods_weight) {
+                # устанавливаем только если нет матча или матч был по полее общему описанию
+                $_->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match, $methods_weight];
+            }
         }
-    
+
     return 1;
 }
 
@@ -165,7 +142,7 @@ sub match {
     my $depth = $env->{'psgix.tmp.RouterPathInfo'}->{depth};
     
     my $match = $self->_match(
-        $self->{rule}->{$env->{PATH_INFO}}->{$depth}, 
+        $self->{rule}->{$env->{REQUEST_METHOD}}->{$depth}, 
         $depth, 
         @{$env->{'psgix.tmp.RouterPathInfo'}->{segments}}
     );
@@ -186,46 +163,6 @@ sub match {
     }
     
 }
-
-
-#sub match {
-#    my $self = shift;
-#    my $env = shift;
-#    
-#    my @rest = (0) x 6;
-#    $rest[$http_methods->{$env->{REQUEST_METHOD}}] = 1;
-#    
-#    my $path = $env->{PATH_INFO}.'#'.join('', @rest).'#1'.('0123456789' x 4); 
-#    
-#    my $rea = 0;
-#    
-#    #$path =~ s!^$self->{re}$!
-#    #    print "----- ",$&,"\n";
-#    #!xe;
-#    
-#    #my @res = grep {defined $_} $path =~ $self->{re};
-#    my @res = grep {defined $_} $path =~ $self->{re};
-#    #do {my $ret = []; $path =~ m!^$self->{re}$!s; $rea = $ret->[0]; undef $ret;};
-#    #my $codeToEval = '$path =~ m!^'.$self->{re}.'$!s;';
-#    #eval $codeToEval;
-#    #1;
-#    my $match = __make_index_from_match(@res);
-#    if ($match) {
-#        my $container = $self->{connect_action}->{$match};
-#        if ($container) {
-#            my @segment = map {$env->{'psgix.RouterPathInfo'}->{segment}->[$_]} @{$container->{segment}};
-#            return {
-#                type => 'controller',
-#                action => $container->{action},
-#                segment => [@segment] 
-#            }
-#        }
-#    }
-#    return;
-#}
-
-
-
 
 1;
 __END__

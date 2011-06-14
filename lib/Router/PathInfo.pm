@@ -218,7 +218,7 @@ sub match {
     my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
-        depth => @segment 
+        depth => scalar @segment 
     };
     
     # check in cache
