@@ -39,6 +39,7 @@ use Test::More;
     is($res->{segment}->[0], 'baz', 'check segment 1');
     is($res->{segment}->[1], 'bar', 'check segment 2');
     
+    # end slash!
     $env = {PATH_INFO => '/foo/baz/bar/', REQUEST_METHOD => 'GET'};
     @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
@@ -61,37 +62,66 @@ use Test::More;
         segments => [@segment],
         depth => scalar @segment 
     };
+    $res = $r->match($env);    
+    is($res->{action}->[0], 'some_rest', 'check rest');
+    
+    $env->{REQUEST_METHOD} = 'POST';
     $res = $r->match($env);
     
-    use Router::Simple;
-    my $router = Router::Simple->new();
-    $router->connect('/foo/bar/:int', {controller => 'ClassInt', action => 'int_on_3'});
-    $router->connect('/foo/baz/:sd', {controller => 'ClassInt', action => 'int_on_2'});    
+    is($res->{action}->[0], 'some', 'check rest');
     
-#    for (1..100) {
-#        $r->add_rule(connect => '/foo/bar/baz/doz/'.$_, action => ['some_rest','bar']);
-#        $router->connect('/foo/bar/baz/doz/'.$_, {controller => 'ClassInt', action => 'int_on_2'});
-#    }
+    # check calback
+    $r->add_rule(
+        connect => '/foo/:enum(bar|baz)/:any', 
+        action => ['any thing'], 
+        methods => ['POST'], 
+        match_callback => sub {
+        	my ($match, $env) = @_;
+        	return $env->{'psgix.memcache'} ? 
+	        	$match :
+	        	{
+			        type  => 'error',
+			        value => [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Forbidden']],
+			        desc  => 'bla-bla'   
+			    };
+        }
+    ); 
     
-    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
-
-for (@env) {
-    my @segment = split '/', $_->{PATH_INFO}, -1; 
-    shift @segment;
-    $_->{'psgix.tmp.RouterPathInfo'} = {
-        segments => [@segment],
-        depth => scalar @segment 
-    };
-}
+    $res = $r->match($env);
+    is($res->{type}, 'error', 'check callback false psgix.memcache');
+    $env->{'psgix.memcache'} = 1;
+    $res = $r->match($env);
+    is($res->{action}->[0], 'any thing', 'check callback true psgix.memcache');
     
-    use Benchmark qw(:all) ;
-    cmpthese timethese(
-     -1, 
-        { 
-            My => sub {$r->match($_) for @env}, 
-            Other => sub {$router->match($_) for @env} 
-        } 
-     );    
+#    use Router::Simple;
+#    my $router = Router::Simple->new();
+#    $router->connect('/foo/bar/:int', {controller => 'ClassInt', action => 'int_on_3'});
+#    $router->connect('/foo/baz/:sd', {controller => 'ClassInt', action => 'int_on_2'});    
+#    
+##    for (1..100) {
+##        $r->add_rule(connect => '/foo/bar/baz/doz/'.$_, action => ['some_rest','bar']);
+##        $router->connect('/foo/bar/baz/doz/'.$_, {controller => 'ClassInt', action => 'int_on_2'});
+##    }
+#    
+#    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
+#
+#for (@env) {
+#    my @segment = split '/', $_->{PATH_INFO}, -1; 
+#    shift @segment;
+#    $_->{'psgix.tmp.RouterPathInfo'} = {
+#        segments => [@segment],
+#        depth => scalar @segment 
+#    };
+#}
+#    
+#    use Benchmark qw(:all) ;
+#    cmpthese timethese(
+#     -1, 
+#        { 
+#            My => sub {$r->match($_) for @env}, 
+#            Other => sub {$router->match($_) for @env} 
+#        } 
+#     );    
         
     
     

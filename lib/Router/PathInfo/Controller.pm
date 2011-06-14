@@ -39,8 +39,8 @@ sub add_rule {
              return;
          };
     }
-    
-    my @methods = ($args{method} and $http_methods->{$args{method}}) ? $args{method} : keys %$http_methods;
+    $args{methods} = $args{methods} ? [grep {$http_methods->{$_}} (ref $args{methods} eq 'ARRAY' ? @{$args{methods}} : $args{methods})] : [];
+    my @methods =   $args{methods}->[0] ? @{$args{methods}} : keys %$http_methods;
     my $methods_weight = $#methods; 
     
     my $sub_after_match = $args{match_callback} if ref $args{match_callback} eq 'CODE';

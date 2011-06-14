@@ -131,7 +131,7 @@ sub match {
     my $self = shift;
     my $env  = shift;
         
-    my @segment = @{$env->{'psgix.RouterPathInfo'}->{segment}};
+    my @segment = @{$env->{'psgix.RouterPathInfo'}->{segments}};
 
     my $serch_file = pop @segment;
     return unless ($serch_file and @segment);
