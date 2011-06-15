@@ -39,6 +39,25 @@ use Test::More;
     is($res->{segment}->[0], 'baz', 'check segment 1');
     is($res->{segment}->[1], 'bar', 'check segment 2');
     
+    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:re(\d{4}\w{4})', action => ['some re','bar re']), 1, 'check add_rule with re');
+        my $env = {PATH_INFO => '/foo/baz/2011year', REQUEST_METHOD => 'GET'};
+    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
+    };
+    my $res = $r->match($env); 
+    
+    # check result
+    is(ref $res, 'HASH', 'check ref match');
+    is($res->{type}, 'controller', 'check match type');
+    is(ref $res->{action}, 'ARRAY', 'check ref action');
+    is($res->{action}->[0], 'some re', 'check action content 1');
+    is($res->{action}->[1], 'bar re', 'check action content 2');
+    is($res->{segment}->[0], 'baz', 'check segment 1');
+    is($res->{segment}->[1], '2011year', 'check segment 2');
+    
     # end slash!
     $env = {PATH_INFO => '/foo/baz/bar/', REQUEST_METHOD => 'GET'};
     @segment = split '/', $env->{PATH_INFO}, -1; 
@@ -92,38 +111,6 @@ use Test::More;
     $env->{'psgix.memcache'} = 1;
     $res = $r->match($env);
     is($res->{action}->[0], 'any thing', 'check callback true psgix.memcache');
-    
-#    use Router::Simple;
-#    my $router = Router::Simple->new();
-#    $router->connect('/foo/bar/:int', {controller => 'ClassInt', action => 'int_on_3'});
-#    $router->connect('/foo/baz/:sd', {controller => 'ClassInt', action => 'int_on_2'});    
-#    
-##    for (1..100) {
-##        $r->add_rule(connect => '/foo/bar/baz/doz/'.$_, action => ['some_rest','bar']);
-##        $router->connect('/foo/bar/baz/doz/'.$_, {controller => 'ClassInt', action => 'int_on_2'});
-##    }
-#    
-#    my @env = map { {PATH_INFO => $_, REQUEST_METHOD => 'GET'} } ('/foo/bar/200', '/foo/baz/400') x 4;
-#
-#for (@env) {
-#    my @segment = split '/', $_->{PATH_INFO}, -1; 
-#    shift @segment;
-#    $_->{'psgix.tmp.RouterPathInfo'} = {
-#        segments => [@segment],
-#        depth => scalar @segment 
-#    };
-#}
-#    
-#    use Benchmark qw(:all) ;
-#    cmpthese timethese(
-#     -1, 
-#        { 
-#            My => sub {$r->match($_) for @env}, 
-#            Other => sub {$router->match($_) for @env} 
-#        } 
-#     );    
-        
-    
     
     pass('*' x 10);
     print "\n";

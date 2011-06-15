@@ -128,23 +128,10 @@ sub new {
     return $self;
 }
 
-sub build_search_index {
-    my $self = shift;
-    # строим индекс
-    my $res = $self->{controller}->build_search_index();
-    # если правила не были добавлены, то скипаем объект, чтобы он не мешал в матче
-    $self->{controller} = undef unless $res;
-    # запоминаем в кешере 
-    $self->{cacher}->namespace($self->_rules_ns) if $self->{cacher};
-    
-    return 1;
-}
-
 sub _rules_ns {
 	my $self = shift;
 	
-	my $str = '';
-	$str .= $self->{controller}->_rules_md5;
+	my $str = $self->{controller}->_rules_md5;
 	$str .= $self->{static}->_rules_md5 if $self->{static};
 	
 	return md5_hex($str);
@@ -152,11 +139,18 @@ sub _rules_ns {
 
 sub add_rule {
     my $self = shift;
+    my $ret = 0;
     if ($self->{controller}) {
-        $self->{controller}->add_rule(@_);
+        $ret = $self->{controller}->add_rule(@_);
     } else {
         carp "controller not defined";
+        return;
     }
+    if ($ret and $self->{cacher}) {
+        # yes, this is overhead..
+        $self->{cacher}->namespace($self->_rules_ns);
+    }
+    return $ret;
 }
 
 =head1 SINGLETON
@@ -211,20 +205,20 @@ sub match {
     
     $match = {
       type  => 'error',
-      value => [400, ['Content-Type' => 'text/plain', 'Content-Length' => 11], ['Bad Request']],
+      code => 400,
       desc  => '$env->{PATH_INFO} not defined'  
     } unless $env->{PATH_INFO};
-    
-    my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
-    $env->{'psgix.tmp.RouterPathInfo'} = {
-        segments => [@segment],
-        depth => scalar @segment 
-    };
     
     # check in cache
     if (not $match and $self->{cacher}) {
         $match = $self->{cacher}->match($env);
         return $match if $match;
+    };
+    
+    my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
     };
     
     # check in static
@@ -240,7 +234,7 @@ sub match {
     # not found?
     $match ||= {
       type  => 'error',
-      value => [404, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Not found']],
+      code => 404,
       desc  => sprintf('not found for PATH_INFO = %s with REQUEST_METHOD = %s', $env->{PATH_INFO}, $env->{REQUEST_METHOD}) 
     };
     

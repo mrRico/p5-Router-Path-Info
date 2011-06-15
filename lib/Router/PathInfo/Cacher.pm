@@ -67,7 +67,7 @@ sub _make_key {
 sub set_match {
     my ($self, $env, $result) = @_;
     
-    my $ttl_key = $result->{type} eq 'error' ? $result->{value}->[0] : $result->{type}; 
+    my $ttl_key = $result->{type} eq 'error' ? $result->{code} : $result->{type}; 
     
     my $ttl = exists $Router::PathInfo::Cacher::ttl_match->{$ttl_key} ? 
                                 $Router::PathInfo::Cacher::ttl_match->{$ttl_key} : 

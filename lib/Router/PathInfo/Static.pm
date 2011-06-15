@@ -6,7 +6,7 @@ use namespace::autoclean;
 use Carp;
 use Plack::MIME;
 use File::Spec;
-use File::MimeInfo::Magic;
+use File::MimeInfo::Magic qw(mimetype);
 use Digest::MD5 qw(md5_hex);
 use Data::Dumper;
 
@@ -131,7 +131,7 @@ sub match {
     my $self = shift;
     my $env  = shift;
         
-    my @segment = @{$env->{'psgix.RouterPathInfo'}->{segments}};
+    my @segment = @{$env->{'psgix.tmp.RouterPathInfo'}->{segments}};
 
     my $serch_file = pop @segment;
     return unless ($serch_file and @segment);
@@ -143,7 +143,7 @@ sub match {
     # среди прочего небольшая защита для никсойдов, дабы не отдать секьюрные файлы
     return {
         type  => 'error',
-        value => [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Forbidden']],
+        code => 403,
         desc  => sprintf('forbidden for PATH_INFO = %s', $env->{PATH_INFO})   
     } if ($serch_file =~ /^\./ or $serch_file =~ /~/ or grep {$_ =~ /^\./ or $_ =~ /~/} @segment);
 
@@ -158,7 +158,7 @@ sub match {
         return $type eq 'allready' ?
             {
                 type  => 'error',
-                value => [404, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Not found']],
+                code => 404,
                 desc  => sprintf('not found static for PATH_INFO = %s', $env->{PATH_INFO})
             } : 
             undef;
