@@ -15,10 +15,6 @@ use Test::More;
     can_ok($r,'add_rule');
     is($r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']), 1, 'check add_rule');
         
-    # check md5
-    can_ok($r,'_rules_md5');
-    is(length $r->_rules_md5, 32, 'check _rules_md5');
-    
     # matching
     can_ok($r,'match');
     my $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};

@@ -30,9 +30,6 @@ use Test::More;
 
     isa_ok($pi, 'Router::PathInfo');
     
-    can_ok($pi,'_rules_ns');
-    is(length $pi->_rules_ns, 32, 'check _rules_ns');
-    
     can_ok($pi,'add_rule');
     can_ok($pi,'match');
     

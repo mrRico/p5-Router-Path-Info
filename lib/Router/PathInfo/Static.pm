@@ -7,7 +7,6 @@ use Carp;
 use Plack::MIME;
 use File::Spec;
 use File::MimeInfo::Magic qw(mimetype);
-use Digest::MD5 qw(md5_hex);
 use Data::Dumper;
 
 =head1 NAME
@@ -95,11 +94,9 @@ sub new {
 	        }
 		}
 	}
-	$hash->{md5} = md5_hex(Dumper($hash)); 
+
 	return keys %$hash ? bless($hash, $class) : undef;
 }
-
-sub _rules_md5 {shift->{md5}}
 
 sub _type_uri {
     my $self          = shift;

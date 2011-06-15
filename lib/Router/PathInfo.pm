@@ -6,11 +6,9 @@ our $VERSION = '0.01';
 
 use namespace::autoclean;
 use Carp;
-use Digest::MD5 qw(md5_hex);
 
 use Router::PathInfo::Controller;
 use Router::PathInfo::Static;
-use Router::PathInfo::Cacher;
 
 =head1 NAME
 
@@ -119,8 +117,7 @@ sub new {
     
     my $self = bless {
         static      => UNIVERSAL::isa($param->{static}, 'HASH')     ? Router::PathInfo::Static->new(%{delete $param->{static}}) : undef,
-        controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new(),
-        cacher      => $param->{cacher} ? Router::PathInfo::Cacher->new(cacher => $param->{cacher}, ns_prefix => $param->{cacher_ns_prefix}) : undef
+        controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new()
     }, $class;
     
     $singleton = $self if $as_singletone;
@@ -128,29 +125,14 @@ sub new {
     return $self;
 }
 
-sub _rules_ns {
-	my $self = shift;
-	
-	my $str = $self->{controller}->_rules_md5;
-	$str .= $self->{static}->_rules_md5 if $self->{static};
-	
-	return md5_hex($str);
-}
-
 sub add_rule {
     my $self = shift;
     my $ret = 0;
     if ($self->{controller}) {
-        $ret = $self->{controller}->add_rule(@_);
+        $self->{controller}->add_rule(@_);
     } else {
         carp "controller not defined";
-        return;
     }
-    if ($ret and $self->{cacher}) {
-        # yes, this is overhead..
-        $self->{cacher}->namespace($self->_rules_ns);
-    }
-    return $ret;
 }
 
 =head1 SINGLETON
@@ -209,12 +191,6 @@ sub match {
       desc  => '$env->{PATH_INFO} not defined'  
     } unless $env->{PATH_INFO};
     
-    # check in cache
-    if (not $match and $self->{cacher}) {
-        $match = $self->{cacher}->match($env);
-        return $match if $match;
-    };
-    
     my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -237,9 +213,6 @@ sub match {
       code => 404,
       desc  => sprintf('not found for PATH_INFO = %s with REQUEST_METHOD = %s', $env->{PATH_INFO}, $env->{REQUEST_METHOD}) 
     };
-    
-    # set in cache
-    $self->{cacher}->set_match($env, $match) if $self->{cacher};
     
     delete $env->{'psgix.tmp.RouterPathInfo'};
     

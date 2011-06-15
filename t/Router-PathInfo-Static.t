@@ -28,9 +28,6 @@ use Test::More;
     );
     isa_ok($s, 'Router::PathInfo::Static');
 
-    can_ok($s,'_rules_md5');
-    is(length $s->_rules_md5, 32, 'check _rules_md5');
-    
     can_ok($s,'match');
 
     

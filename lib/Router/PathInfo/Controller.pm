@@ -5,7 +5,6 @@ use warnings;
 use namespace::autoclean;
 use Carp;
 use Data::Dumper;
-use Digest::MD5 qw(md5_hex);
 
 my $http_methods = {
     GET     => 1,
@@ -27,8 +26,6 @@ sub new {
     
     return $self;
 }
-
-sub _rules_md5 {md5_hex(Dumper(shift->{rule}))}
 
 sub add_rule {
     my ($self, %args) = @_;

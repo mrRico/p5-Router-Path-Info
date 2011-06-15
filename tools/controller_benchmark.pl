@@ -42,8 +42,8 @@ my $res;
     cmpthese timethese(
      -1, 
         { 
-            My => sub {$r->match($_) for @env}, 
-            Other => sub {$router->match($_) for @env} 
+            'Router::PathInfo::Controller' => sub {$r->match($_) for @env}, 
+            'Router::Simple' => sub {$router->match($_) for @env} 
         } 
      );
     pass('*' x 10);
@@ -71,8 +71,8 @@ my $res;
     cmpthese timethese(
      -1, 
         { 
-            My => sub {$r->match($_) for @env404}, 
-            Other => sub {$router->match($_) for @env404} 
+            'Router::PathInfo::Controller' => sub {$r->match($_) for @env404}, 
+            'Router::Simple' => sub {$router->match($_) for @env404} 
         } 
      );
      pass('*' x 10);
@@ -102,8 +102,8 @@ my $res;
     cmpthese timethese(
      -1, 
         { 
-            My => sub {$r->match($_) for @env404}, 
-            Other => sub {$router->match($_) for @env404} 
+            'Router::PathInfo::Controller' => sub {$r->match($_) for @env404}, 
+            'Router::Simple' => sub {$router->match($_) for @env404} 
         } 
      );     
      
