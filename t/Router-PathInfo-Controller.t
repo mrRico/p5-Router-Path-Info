@@ -35,15 +35,15 @@ use Test::More;
     is($res->{segment}->[0], 'baz', 'check segment 1');
     is($res->{segment}->[1], 'bar', 'check segment 2');
     
-    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:re(\d{4}\w{4})', action => ['some re','bar re']), 1, 'check add_rule with re');
-        my $env = {PATH_INFO => '/foo/baz/2011year', REQUEST_METHOD => 'GET'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    is($r->add_rule(connect => '/foo/:enum(bar|baz)/:re(^\d{4}\w{4}$)', action => ['some re','bar re']), 1, 'check add_rule with re');
+    $env = {PATH_INFO => '/foo/baz/2011year', REQUEST_METHOD => 'GET'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
         depth => scalar @segment 
     };
-    my $res = $r->match($env); 
+    $res = $r->match($env); 
     
     # check result
     is(ref $res, 'HASH', 'check ref match');

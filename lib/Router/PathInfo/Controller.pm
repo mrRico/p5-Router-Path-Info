@@ -2,6 +2,77 @@ package Router::PathInfo::Controller;
 use strict;
 use warnings;
 
+=head1 NAME
+
+B<Router::PathInfo::Controller> provides a mapping PATH_INFO to controllers
+
+=head1 SYNOPSIS
+    
+    # create instance
+    my $r = Router::PathInfo::Controller->new();
+    
+    # describe connect
+    $r->add_rule(connect => '/foo/:enum(bar|baz)/:any', action => ['some','bar']);
+    
+    # prepare arguments (this action to prepare $env hidden from you in the module Router::PathInfo)
+    my $env = {PATH_INFO => '/foo/baz/bar', REQUEST_METHOD => 'GET'};
+    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
+    };
+    
+    # match
+    my $res = $r->match($env);  
+	#  $res =  HASH(0x93d74d8)
+	#   'action' => ARRAY(0x99294e8)
+	#      0  'some'
+	#      1  'bar'
+	#   'segment' => ARRAY(0x93d8038)
+	#      0  'baz'
+	#      1  'bar'
+	#   'type' => 'controller'
+
+    # or $res may by undef
+
+=head1 DESCRIPTION
+
+C<Router::PathInfo::Controller> is used for matching sets of trees. 
+Therefore, search matching is faster and more efficient, 
+than a simple enumeration of regular expressions to search for a suitable result.
+
+In the descriptions of 'C<connect>' by adding rules, you can use these tokens:
+
+    :any                                 - match with any segment
+    :re(...some regular expression...)   - match with the specified regular expression
+    :enum(...|...)                       - match with a segment from the set
+
+For example
+    
+    '/foo/bar/:any'
+    '/foo/:re(:re(^\d{4}\w{4}$))/:any'
+    '/:enum(foo|bar|baz)/:re(:re(^\d{4}\w{4}$))/:any'
+ 
+All descriptions of the segments have a certain weight. 
+Thus, the description C<:enum> has the greatest weight, a description of C<:re> weighs even less. Weakest coincidence is C<:any>.
+
+For all descriptions 'C<connect>' using these tokens in the match will be returned to a special key 'C<segment>' 
+in which stores a list of all segments C<PATH_INFO> they are responsible.
+
+An important point: description 'C<connect>' dominates over http method. Example:
+    
+    $r->add_rule(connect => '/foo/:any/baz', action => 'one', methods => ['GET','DELETE']);
+    $r->add_rule(connect => '/foo/bar/:any', action => 'two');
+    
+    for '/foo/bar/baz' with GET -> 'two'
+
+In C<action> you can pass any value: object, arrayref, hashref or a scalar.
+
+=head1 METHODS
+
+=cut
+
 use namespace::autoclean;
 use Carp;
 use Data::Dumper;
@@ -15,18 +86,23 @@ my $http_methods = {
     HEAD    => 1
 };
 
+=head2 new()
+
+Simple constructor  
+
+=cut
 sub new {
-    my $class = shift;
-    my $param = {@_};
-    
-    my $self = bless {
+    bless {
         rule => {},
         re_compile => {},
-    }, $class;
-    
-    return $self;
+    }, shift;
 }
 
+=head2 add_rule(connect => $describe_connect, action => $action_token[, methods => $arrayref, match_callback => $code_ref])
+
+Added your description to match.
+
+=cut
 sub add_rule {
     my ($self, %args) = @_;
     
