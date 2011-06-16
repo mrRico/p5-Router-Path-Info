@@ -52,8 +52,8 @@ use Test::More;
     is($res->{mime}, 'text/troff', 'check mime');
     
     # path with file with /.name
-    my $env = {PATH_INFO => '/static/t/.any'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    $env = {PATH_INFO => '/static/t/.any'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -66,8 +66,8 @@ use Test::More;
     is($res->{code}, 403, 'check forbidden');
     
     # path with /../
-    my $env = {PATH_INFO => '/static/t/../any'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    $env = {PATH_INFO => '/static/t/../any'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -80,8 +80,8 @@ use Test::More;
     is($res->{code}, 403, 'check another forbidden');
     
     # not found
-    my $env = {PATH_INFO => '/static/t/not_found.txt'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    $env = {PATH_INFO => '/static/t/not_found.txt'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -98,8 +98,8 @@ use Test::More;
     pass('*' x 10);
     
     # check already exists static with type 'on_demand'
-    my $env = {PATH_INFO => '/cached/Router-PathInfo-Static.t'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    $env = {PATH_INFO => '/cached/Router-PathInfo-Static.t'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -112,8 +112,8 @@ use Test::More;
     is($res->{mime}, 'text/troff', 'check mime');   
     
     # check not exists static with type 'on_demand'
-    my $env = {PATH_INFO => '/cached/not_found.txt'};
-    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    $env = {PATH_INFO => '/cached/not_found.txt'};
+    @segment = split '/', $env->{PATH_INFO}, -1; 
     shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
