@@ -1,40 +1,140 @@
-Router-PathInfo version 0.01
-============================
+=head1 NAME
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
+B<Router::PathInfo> - PATH_INFO router, based on search trees
 
-A README file is required for CPAN modules since CPAN extracts the
-README file from a module distribution so that people browsing the
-archive can use it get an idea of the modules uses. It is usually a
-good idea to provide version information here so that people can
-decide whether fixes for the module are worth downloading.
+=head1 DESCRIPTION
 
-INSTALLATION
+Allows balancing PATH_INFO to static and controllers.
+It has a simple and intuitive interface.
 
-To install this module type the following:
+=head1 SYNOPSIS
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+    use Router::PathInfo;
+    
+    # or
+    use Router::PathInfo as => singletone;
+    # this allow to call after new: instance, clear_singleton
+    
+    my $r = Router::PathInfo->new( 
+        static => {
+            allready => {
+                path => '/path/to/static',
+                first_uri_segment => 'static'
+            }
+        }
+    );
+        
+    $r->add_rule(
+        connect         => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
+        action          => $some_thing,
+        mthods          => ['GET','DELETE'],
+        match_callback  => $code_ref
+    );
+    
+    my $env = {PATH_INFO => '/foo/bar/2011/baz', REQUEST_METHOD => 'GET'};
+    
+    my $res = $r->match($env);
+    # or
+    my $res = $r->match('/foo/bar/2011/baz'); # GET by default
+    
+    # $res = {
+    #     type => 'controller',
+    #     action => $some, # result call $code_ref->($match, $env)
+    #     segment => ['bar','2011','baz']
+    # }
+    
+    $env = {PATH_INFO => '/static/img/some.jpg'};
+    
+    $res = $r->match($env);
+    
+    # $res = {
+    #     type  => 'static',
+    #     file  => '/path/to/static/img/some.jpg',
+    #     mime  => 'image/jpeg'
+    # }    
 
-DEPENDENCIES
+See more details L<Router::PathInfo::Controller>, L<Router::PathInfo::Static>
 
-This module requires these other modules and libraries:
+=head1 PACKAGE VARIABLES
 
-  blah blah blah
+=head2 $Router::PathInfo::as_singleton
 
-COPYRIGHT AND LICENCE
+Mode as singletone. By default - 0.
+You can pick up directly, or:
 
-Put the correct copyright and licence information here.
+    use Router::PathInfo as => singletone;
+    # or
+    require Router::PathInfo;
+    Router::PathInfo->import(as => singletone);
+    # or
+    $Router::PathInfo::as_singleton = 1
+    
+If you decide to work in singletone mode, raise the flag before the call to C<new>. 
 
-Copyright (C) 2011 by Иван
+=cut
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.10.1 or,
-at your option, any later version of Perl 5 you may have available.
+=head1 SINGLETON
+
+When you work in a mode singletone, you have access to methods: C<instance> and C<clear_singleton>
+
+=cut
 
 
+=head1 METHODS
+
+=head2 new(static => $static)
+
+Constructor. All arguments optsioanlny.
+
+static - it hashref arguments for the constructor L<Router::PathInfo::Static>
+
+=cut
+
+=head2 add_rule
+
+See C<add_rule> from L<Router::PathInfo::Controller>
+
+=cut
+
+=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => 'GET'})
+
+Search match. Initially checked for matches on static, then according to the rules of the controllers.
+In any event returns hashref coincidence or an error.
+
+Example:
+
+    {
+      type  => 'error',
+      code => 400,
+      desc  => '$env->{PATH_INFO} not defined'  
+    }
+    
+    {
+      type  => 'error',
+      code => 404,
+      desc  => sprintf('not found for PATH_INFO = %s with REQUEST_METHOD = %s', $env->{PATH_INFO}, $env->{REQUEST_METHOD}) 
+    }
+    
+    {
+        type => 'controller',
+        action => $action,
+        segment => $array_ref_of_segments 
+    }
+    
+    {
+        type  => 'static',
+        file  => $serch_file,
+        mime  => $mime_type
+    }
+
+=cut
+
+=head1 SEE ALSO
+
+L<Router::PathInfo::Static>, L<Router::PathInfo::Controller>
+
+=head1 AUTHOR
+
+mr.Rico <catamoose at yandex.ru>
+
+=cut

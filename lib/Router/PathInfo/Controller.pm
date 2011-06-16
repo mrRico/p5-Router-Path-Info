@@ -4,7 +4,7 @@ use warnings;
 
 =head1 NAME
 
-B<Router::PathInfo::Controller> provides a mapping PATH_INFO to controllers
+B<Router::PathInfo::Controller> provides a mapping PATH_INFO to controllers.
 
 =head1 SYNOPSIS
     
@@ -75,7 +75,6 @@ In C<action> you can pass any value: object, arrayref, hashref or a scalar.
 
 use namespace::autoclean;
 use Carp;
-use Data::Dumper;
 
 my $http_methods = {
     GET     => 1,
@@ -100,7 +99,32 @@ sub new {
 
 =head2 add_rule(connect => $describe_connect, action => $action_token[, methods => $arrayref, match_callback => $code_ref])
 
-Added your description to match.
+Add your description to match.
+
+'C<methods>' - arrayref of items GET, POST, PUT, OPTIONS, DELETE, HEAD
+
+'C<match_callback>' - coderef is called after match found. It takes two arguments: a match found and heshref passed parameters (see method C<match>). 
+Example:
+
+    $r->add_rule(
+        connect => '/foo/:enum(bar|baz)/:any', 
+        action => ['any thing'], 
+        methods => ['POST'], 
+        match_callback => sub {
+            my ($match, $env) = @_;
+            
+            if ($env->{...} == ..) {
+                # $match->{action}->[0] eq 'any thing'
+                return $match;
+            } else {
+                return {
+                    type  => 'error',
+                    code => 403,
+                    desc  => 'blah-blah'   
+                }; 
+            }
+        }
+    );
 
 =cut
 sub add_rule {
@@ -172,7 +196,7 @@ sub add_rule {
         my $has_segment = @segment;
         for (@$res) {
             if (not $_->{match} or $_->{match}->[3] >= $methods_weight) {
-                # устанавливаем только если нет матча или матч был по полее общему описанию
+                # set only if no match or a match for a more accurate description
                 $_->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match, $methods_weight];
             }
         }
@@ -208,6 +232,21 @@ sub _match {
     return;
 }
 
+=head2 match({REQUEST_METHOD => ..., 'psgix.tmp.RouterPathInfo' => ...})
+
+Search match. See SYNOPSIS.
+
+If a match is found, it returns hashref:
+
+    {
+        type => 'controller',
+        action => $action,
+        segment => $arrayref
+    }
+
+Otherwise, undef. 
+
+=cut
 sub match {
 	my $self = shift;
     my $env = shift;
@@ -236,6 +275,16 @@ sub match {
     }
     
 }
+
+=head1 SEE ALSO
+
+L<Router::PathInfo>, L<Router::PathInfo::Static>
+
+=head1 AUTHOR
+
+mr.Rico <catamoose at yandex.ru>
+
+=cut
 
 1;
 __END__

@@ -2,78 +2,107 @@ package Router::PathInfo::Static;
 use strict;
 use warnings;
 
-use namespace::autoclean;
-use Carp;
-use Plack::MIME;
-use File::Spec;
-use File::MimeInfo::Magic qw(mimetype);
-use Data::Dumper;
-
 =head1 NAME
 
-Router::PathInfo::Static
+B<Router::PathInfo::Static> - static routing
 
 =head1 DESCRIPTION
 
-Класс для описания роутинга статики.
-Позволяет описать статику в следующем виде:
+Class to describe the routing of statics.
+Allows us to describe the statics as follows:
 
-- указать стартовый сегмент URI
+- Specify the starting segment of the URI
 
-- указать директорию на диске. где будет проходить поиск статики
+- Specify a directory on disk, which will host the search for static
 
-Статика здесь разделяется на две части:
+Statics is divided into two parts:
 
-- allready - уже существующая ("классическая") статика
+- C<allready> - already exists (the "classic") static
 
-- on_demand - создаваемая по требованию
+- C<on_demand> - created on demand
 
 Если случай C<allready> - это различные css, js, картинки, то C<on_demand> - это архивы и прочее.
 Если файл для C<on_demand> не найден, C<match> вернёт undef - сигнал к тому, что поиск имеет смысл продолжить среди роутинга по правилам.  
 
-В случае успеха возвращает L<Router::PathInfo::Match::Static> или L<Router::PathInfo::Match::Error> в случае ошибки.
-Возврат C<undef> означает, что имеет смысл продолжить поиск совпадения URI на контроллеры.  
+Case C<allready> it's different css, js, images. C<on_demand> it's archives and another.
+If the file to C<on_demand> not found, C<match> return undef - a signal that makes sense to continue search of L<Router::PathInfo::Controller> routing.
+
+If successful, returns hashref:
+
+    {
+        type => 'static',
+        mime_type => $mime_type,
+        file_name => '/path/to/found.static',
+    };
+    
+This ensures that the file exists, has size, and is readable.
+
+
+If static is not found (for C<allready>) an error is returned:
+
+    {
+        type  => 'error',
+        code => 404,
+        desc  => sprintf('not found static for PATH_INFO = %s', $env->{PATH_INFO})
+    }
+
+If PATH_INFO contains illegal characters (such as C</../> or C</.file>)an error is returned:
+
+    {
+        type  => 'error',
+        code => 403,
+        desc  => sprintf('forbidden for PATH_INFO = %s', $env->{PATH_INFO})   
+    }
+
+Return C<undef> means that it makes sense to continue search of L<Router::PathInfo::Controller> routing.  
 
 =head1 SYNOPSIS
     
-    my $static_dispatch = Router::PathInfo::Static->new(
-        # describe simple static 
-        allready => {
-            path => '/path/to/static',
-            first_uri_segment => 's'
-        },
-        
-        # describe on demand created static
-        on_demand => {
-            path => '/path/to/cached',
-            first_uri_segment => 'cached',
-        }
+    my $s = Router::PathInfo::Static->new(
+            # describe simple static 
+            allready => {
+                path => $allready_path,
+                first_uri_segment => 'static'
+            },
+            # describe on demand created static
+            on_demand => {
+                path => $on_demand_path,
+                first_uri_segment => 'archives',
+            }
     );
     
-    # dispath example:
-    # http://example.org/s/css/main/some.file     => /path/to/static/css/main/some.file
-    # http://example.org/css/main/foo/some.file   => 404 # need 's' as first uri segnemt
+    my $env = {PATH_INFO => '/static/some.jpg'};
+    my @segment = split '/', $env->{PATH_INFO}, -1; 
+    shift @segment;
+    $env->{'psgix.tmp.RouterPathInfo'} = {
+        segments => [@segment],
+        depth => scalar @segment 
+    };
+
+    my $res = $s->match($env);
     
-    # http://example.org/cached/archive/1254.html => /path/to/cached/archive/1254.html or undef
-    
-    # http://example.org/s/css/main/some.file~    => 403 (no ~ in file name)
-    # http://example.org/s/css/main/.some.file    => 403 (file starts with .)
-    
-    my $ret = $static_dispatch->match( URI->new('http://example.org/s/css/slave/some.jpg') );
-    
-    # Dumper($ret) if /path/to/static/css/slave/some.jpg exists, have length, and readable:
-    #    {
-    #      'mime_type' => 'image/jpeg',
-    #      'file_name' => '/path/to/static/css/slave/some.jpg',
-    #    };
+    # $res = {
+    #     type  => 'static',
+    #     file  => $path_to_some_jpg,
+    #     mime  => 'image/jpeg'
+    # }
 
 =head1 METHODS
 
+=cut
+
+use namespace::autoclean;
+use Plack::MIME;
+use File::Spec;
+use File::MimeInfo::Magic qw(mimetype);
+
 =head2 new(allready => {path => $dir, first_uri_segment => $uri_segment}, on_demand => {...})
 
-Конструктор, принимает описания обычной статики (allready) и/или статики создаваемой по требованию (on_demand).
-Каждое описание представляет из себя hashref с ключами path (путь к директории) 
-и first_uri_segment (первый сегмент URI, который определяет неймспейс выдленный для обозначенных нужд).    
+The constructor accepts the description of the statics (allready) and/or static generated on demand (on_demand).
+Each description is a hashref with the keys C<'path'> (directory path)
+and C<'first_uri_segment'> (the first segment of a PATH_INFO, which defines namespace for designated purposes).    
+
+All arguments are optional. If no arguments are given, the object is not created.
 
 =cut
 sub new {
@@ -109,19 +138,12 @@ sub _type_uri {
     return;
 }
 
-=head2 match($uri)
+=head2 match({'psgix.tmp.RouterPathInfo' => {...}})
 
 Objects method. 
 Receives a uri and return:
 
-- L<Router::PathInfo::Match::Static> instance if file exists
-
-- L<Router::PathInfo::Match::Error> instance, something error
-
-- undef, need continue to research
-
 For C<on_demand> created static, return undef if file not found.
-L<Router::PathInfo::Match::Static> provide what file file exists, have length, and readable.
 
 =cut
 sub match {
@@ -164,7 +186,11 @@ sub match {
 
 =head1 DEPENDENCIES
 
-L<File::MimeInfo::Magic>
+L<Plack::MIME>, L<File::MimeInfo::Magic>
+
+=head1 SEE ALSO
+
+L<Router::PathInfo>, L<Router::PathInfo::Controller>
 
 =head1 AUTHOR
 

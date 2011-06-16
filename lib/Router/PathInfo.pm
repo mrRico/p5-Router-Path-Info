@@ -12,35 +12,12 @@ use Router::PathInfo::Static;
 
 =head1 NAME
 
-Router::PathInfo
+B<Router::PathInfo> - PATH_INFO router, based on search trees
 
 =head1 DESCRIPTION
 
-Позволяет балансировать входящие url на статику и контроллеры.
-Обладает простым и понятным интерфейсом.
-Обуспечивает свзяь C<url - match> как C<один-к-одному>. 
-
-Для поиска совпадений на контроллеры использует дерево,
-выбор ветки в котором определяется весом правила, http-методом доступа и числом успешных совпадений за определённый промежуток времени.
-
-Статика делится на 2 части: стандартная и создаваемая по требованию.
-Если в предопределённой папке не была найдена статика создаваемая по требованию, 
-то поиск продолжается по дереву правил до нахождения подходящего контроллера.
-
-Предусмотрена возможность расширять набор правил для описаний uri собтвенными правилами.
-
-В ответ вы всегда получаете объект совпадения. Один из трёх возможных:
-
-- cовпадение по статике L<Router::PathInfo::Match::Static>
-
-- cовпадение по контроллерам L<Router::PathInfo::Match::Rule>
-
-- ошибка L<Router::PathInfo::Match::Error>
-
-Вы можете передать объект mamcache и, тем самым избежать повторного вычиления для одного и того же uri.
-Есть возможность задавать время кеширования для каждого типа совпадения.
-
-И, конечно, предусмотрена загрузка правил как из файла (в формате L<Config::Tiny>), так и через интерфейс.
+Allows balancing PATH_INFO to static and controllers.
+It has a simple and intuitive interface.
 
 =head1 SYNOPSIS
 
@@ -50,31 +27,52 @@ Router::PathInfo
     use Router::PathInfo as => singletone;
     # this allow to call after new: instance, clear_singleton
     
-    my $router = Router::PathInfo->new(
-        static => ...,
-        controller => {
-            rules_file => '/path/to/rule.ini'
+    my $r = Router::PathInfo->new( 
+        static => {
+            allready => {
+                path => '/path/to/static',
+                first_uri_segment => 'static'
+            }
         }
     );
-    
-    $router->controller->add_rule(
-        connect => '/foo/:int/bar',
-        controller => 'My::Class',
-        action => 'some_method',
-        method => 'POST'
+        
+    $r->add_rule(
+        connect         => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
+        action          => $some_thing,
+        mthods          => ['GET','DELETE'],
+        match_callback  => $code_ref
     );
     
-    my $match = $router->match('http://example.com/foo/200/bar');
-    # or 
-    my $match = $router->match('/foo/200/bar');
+    my $env = {PATH_INFO => '/foo/bar/2011/baz', REQUEST_METHOD => 'GET'};
     
+    my $res = $r->match($env);
+    # or
+    my $res = $r->match('/foo/bar/2011/baz'); # GET by default
+    
+    # $res = {
+    #     type => 'controller',
+    #     action => $some, # result call $code_ref->($match, $env)
+    #     segment => ['bar','2011','baz']
+    # }
+    
+    $env = {PATH_INFO => '/static/img/some.jpg'};
+    
+    $res = $r->match($env);
+    
+    # $res = {
+    #     type  => 'static',
+    #     file  => '/path/to/static/img/some.jpg',
+    #     mime  => 'image/jpeg'
+    # }    
+
+See more details L<Router::PathInfo::Controller>, L<Router::PathInfo::Static>
 
 =head1 PACKAGE VARIABLES
 
 =head2 $Router::PathInfo::as_singleton
 
-Режим работы как singletone. По умолчанию - 0.
-Можно поднять впрямую, или:
+Mode as singletone. By default - 0.
+You can pick up directly, or:
 
     use Router::PathInfo as => singletone;
     # or
@@ -83,7 +81,7 @@ Router::PathInfo
     # or
     $Router::PathInfo::as_singleton = 1
     
-Если вы решаете работать в singletone режиме, поднимите флаг до вызова new. 
+If you decide to work in singletone mode, raise the flag before the call to C<new>. 
 
 =cut
 
@@ -95,15 +93,20 @@ sub import {
     return;
 }
 
-=head1 CLASS METHODS
+=head1 SINGLETON
 
-=head2 new(static => $static, memcached => $memcached, controller => $controller)
+When you work in a mode singletone, you have access to methods: C<instance> and C<clear_singleton>
 
-Конструктор. Все аргументы опциоанльны.
+=cut
 
-static     - это hasref аргументов для конструктора L<Router::PathInfo::Static>
-memcached  - объект с мемкеш-интерфейсом (подробнее см L<Router::PathInfo::Cacher>)
-controller - это hasref аргументов для конструктора L<Router::PathInfo::Controller>
+
+=head1 METHODS
+
+=head2 new(static => $static)
+
+Constructor. All arguments optsioanlny.
+
+static - it hashref arguments for the constructor L<Router::PathInfo::Static>
 
 =cut
 
@@ -125,6 +128,11 @@ sub new {
     return $self;
 }
 
+=head2 add_rule
+
+See C<add_rule> from L<Router::PathInfo::Controller>
+
+=cut
 sub add_rule {
     my $self = shift;
     my $ret = 0;
@@ -135,42 +143,39 @@ sub add_rule {
     }
 }
 
-=head1 SINGLETON
-
-Когда Вы работает в режиме синглетона, вам доступны методы: C<instance> и C<clear_singleton>
-
-=cut
 sub instance        {$as_singletone ? $singleton : carp "singletone not allowed"}
 sub clear_singleton {undef $singleton}
 
-=head1 OBJECT METHODS
+=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => 'GET'})
 
-=head1 cacher
+Search match. Initially checked for matches on static, then according to the rules of the controllers.
+In any event returns hashref coincidence or an error.
 
-Доступ к объекту кеширования L<Router::PathInfo::Cacher>
+Example:
 
-=head1 static
-
-Доступ к объекту роутинга статики L<Router::PathInfo::Static>
-
-=head1 controller
-
-Доступ к объекту роутинга контроллеров L<Router::PathInfo::Controller>
-
-=cut
-#sub cacher          {shift->{cacher}}
-#sub static          {shift->{static}}
-#sub controller      {shift->{controller}}
-
-=head2 match($url[, $method])
-
-Поиск совпадения. Вначале проверяется наличие совпадения в кеше, затем по статике, и по правилам среди контроллеров.
-
-Совпадение по статике - L<Router::PathInfo::Match::Static>.
-
-Совпадение по контроллерам - L<Router::PathInfo::Match::Rule>.
-
-Не найдено - L<Router::PathInfo::Match::Error>.
+    {
+      type  => 'error',
+      code => 400,
+      desc  => '$env->{PATH_INFO} not defined'  
+    }
+    
+    {
+      type  => 'error',
+      code => 404,
+      desc  => sprintf('not found for PATH_INFO = %s with REQUEST_METHOD = %s', $env->{PATH_INFO}, $env->{REQUEST_METHOD}) 
+    }
+    
+    {
+        type => 'controller',
+        action => $action,
+        segment => $array_ref_of_segments 
+    }
+    
+    {
+        type  => 'static',
+        file  => $serch_file,
+        mime  => $mime_type
+    }
 
 =cut
 sub match {
@@ -220,31 +225,9 @@ sub match {
     return $match;
 }
 
-=head1 NOTE
-
-Для C<Router::PathInfo> не имеет значения в каком порядке вы загружаете правила. Использование дерева (а не массива регулярных выражений) гарантирует,
-что каждое описание url и контроллера найдёт своё место.
-
-Существует общая проблема роутинга, которую можно описать так:
-
-    1) /:any/baz -> POST
-    2) /foo/:any -> all http methods
-    
-    http://example.com/foo/baz with POST 
-    1 or 2
-    ?
-
-C<Router::PathInfo> разрешает эту проблему отдавая предпочтение варианту C<2)>, 
-так как до перехода к C<1)> мы должны исключить совпадение foo с C<:any>.   
-
-Вес сегмента ури доминирует над методом доступа при поиске совпадения.
-
-Если Вы используете C<REST> иделогию, Вам нужно позаботиться о точности описания вышестоящих сегментов uri и, отдавать предпочтение
-правилам с наименьшим весом (высокая точность). Подробнее о весах правил можно посмотреть C<Router::PathInfo::Rule::*>.
-
 =head1 SEE ALSO
 
-L<Router::PathInfo::Static>, L<Router::PathInfo::Controller>, L<Router::PathInfo::Cacher>
+L<Router::PathInfo::Static>, L<Router::PathInfo::Controller>
 
 =head1 AUTHOR
 
