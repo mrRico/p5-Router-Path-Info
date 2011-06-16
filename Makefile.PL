@@ -1,12 +1,15 @@
 use 5.010001;
 use ExtUtils::MakeMaker;
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+
 WriteMakefile(
     NAME              => 'Router::PathInfo',
-    VERSION_FROM      => 'lib/Router/PathInfo.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Router/PathInfo.pm', # retrieve abstract from module
-       AUTHOR         => 'Иван <mrrico@>') : ()),
+    VERSION_FROM      => 'lib/Router/PathInfo.pm',
+    PREREQ_PM         => {
+        'namespace::autoclean'  => 0,
+        'Carp'                  => 0,
+        'Plack::MIME'           => 0,
+        'File::Spec'            => 0,
+        'File::MimeInfo::Magic' => 0
+    },
+    AUTHOR         => 'mr.Rico <catamoose@yandex.ru>',
 );

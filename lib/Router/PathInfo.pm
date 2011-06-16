@@ -225,6 +225,10 @@ sub match {
     return $match;
 }
 
+=head1 SOURSE
+
+git@github.com:mrRico/p5-Router-Path-Info.git
+
 =head1 SEE ALSO
 
 L<Router::PathInfo::Static>, L<Router::PathInfo::Controller>
