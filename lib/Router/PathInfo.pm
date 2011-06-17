@@ -2,7 +2,7 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use namespace::autoclean;
 use Carp;
@@ -120,7 +120,10 @@ sub new {
     
     my $self = bless {
         static      => UNIVERSAL::isa($param->{static}, 'HASH')     ? Router::PathInfo::Static->new(%{delete $param->{static}}) : undef,
-        controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new()
+        controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new(),
+        cacher      => {},
+        cache_counter => 0,
+        cache_limit => 100
     }, $class;
     
     $singleton = $self if $as_singletone;
@@ -137,6 +140,8 @@ sub add_rule {
     my $self = shift;
     my $ret = 0;
     if ($self->{controller}) {
+        $self->{cache_counter} = 0;
+        $self->{cacher} = {};
         $self->{controller}->add_rule(@_);
     } else {
         carp "controller not defined";
@@ -196,6 +201,10 @@ sub match {
       desc  => '$env->{PATH_INFO} not defined'  
     } unless $env->{PATH_INFO};
     
+    my $cache_key = join('#',$env->{PATH_INFO}, $env->{REQUEST_METHOD});
+    my $cache_match = $self->{cacher}->{$cache_key};
+    return $cache_match if $cache_match;
+    
     my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
         segments => [@segment],
@@ -220,6 +229,14 @@ sub match {
     };
     
     delete $env->{'psgix.tmp.RouterPathInfo'};
+    
+    if ($self->{cache_counter} > $self->{cache_limit}) {
+        $self->{cache_counter} = 0;
+        $self->{cacher} = {};
+    } else {
+        $self->{cache_counter}++;
+    }
+    $self->{cacher}->{$cache_key} = $match; 
     
     # match is done
     return $match;
