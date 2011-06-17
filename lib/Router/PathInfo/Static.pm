@@ -21,9 +21,6 @@ Statics is divided into two parts:
 
 - C<on_demand> - created on demand
 
-Если случай C<allready> - это различные css, js, картинки, то C<on_demand> - это архивы и прочее.
-Если файл для C<on_demand> не найден, C<match> вернёт undef - сигнал к тому, что поиск имеет смысл продолжить среди роутинга по правилам.  
-
 Case C<allready> it's different css, js, images. C<on_demand> it's archives and another.
 If the file to C<on_demand> not found, C<match> return undef - a signal that makes sense to continue search of L<Router::PathInfo::Controller> routing.
 
