@@ -21,7 +21,8 @@ It has a simple and intuitive interface.
                 path => '/path/to/static',
                 first_uri_segment => 'static'
             }
-        }
+        },
+        cache_limit => 300
     );
         
     $r->add_rule(
@@ -82,11 +83,14 @@ When you work in a mode singletone, you have access to methods: C<instance> and 
 
 =head1 METHODS
 
-=head2 new(static => $static)
+=head2 new(static => $static, cache_limit => $cache_limit)
 
 Constructor. All arguments optsioanlny.
 
 static - it hashref arguments for the constructor L<Router::PathInfo::Static>
+
+cache_limit - limit of matches stored by the rules contain tokens C<:re> and C<:any>, statics and errors. By default - 200.
+All matches (that occur on an accurate description) cached without limit.
 
 =cut
 
