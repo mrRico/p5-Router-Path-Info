@@ -15,7 +15,7 @@ my $res;
     $router->connect('/foo/bar/:int', {controller => '1', action => '11'});
     $router->connect('/foo/baz/:sd', {controller => '2', action => '22'});    
     
-    my $r = Router::PathInfo->new();
+    my $r = Router::PathInfo->new(cache_limit => 120);
     $r->add_rule(connect => '/foo/bar/:any', action => ['1','11']);    
     $r->add_rule(connect => '/foo/baz/:any', action => ['2','2']);
     
@@ -44,7 +44,8 @@ my $res;
     pass('test resolve 404');
     
     $res = $r->match($env404[0]);
-    is($res, undef, 'check Router::PathInfo');
+    is(ref $res, 'HASH', 'check Router::PathInfo');
+    is($res->{code}, 404, 'check Router::PathInfo');
     $res = $router->match($env404[0]);
     is($res, undef, 'check Router::Simple');
     pass('*' x 10);

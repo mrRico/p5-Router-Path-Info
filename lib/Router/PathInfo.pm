@@ -121,9 +121,10 @@ sub new {
     my $self = bless {
         static      => UNIVERSAL::isa($param->{static}, 'HASH')     ? Router::PathInfo::Static->new(%{delete $param->{static}}) : undef,
         controller  => UNIVERSAL::isa($param->{controller}, 'HASH') ? Router::PathInfo::Controller->new(%{delete $param->{controller}}) : Router::PathInfo::Controller->new(),
-        cacher      => {},
-        cache_counter => 0,
-        cache_limit => 100
+        cache                   => {},
+        _hidden_cache           => {},
+        cache_limit             => (defined $param->{cache_limit} and $param->{cache_limit}) =~ /^\d+$/ ? $param->{cache_limit} : 200,
+        cache_cnt               => 0
     }, $class;
     
     $singleton = $self if $as_singletone;
@@ -140,8 +141,8 @@ sub add_rule {
     my $self = shift;
     my $ret = 0;
     if ($self->{controller}) {
-        $self->{cache_counter} = 0;
-        $self->{cacher} = {};
+        $self->{cache_cnt}  = 0;
+        $self->{cache}      = {};
         $self->{controller}->add_rule(@_);
     } else {
         carp "controller not defined";
@@ -201,8 +202,9 @@ sub match {
       desc  => '$env->{PATH_INFO} not defined'  
     } unless $env->{PATH_INFO};
     
+    # find in cache
     my $cache_key = join('#',$env->{PATH_INFO}, $env->{REQUEST_METHOD});
-    my $cache_match = $self->{cacher}->{$cache_key};
+    my $cache_match = $self->{cache}->{$cache_key} || $self->{_hidden_cache}->{$cache_key};
     return $cache_match if $cache_match;
     
     my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
@@ -217,9 +219,11 @@ sub match {
     }
     
     # check in controllers
+    # $not_exactly - match with regexp
+    my $not_exactly = 0;
     if (not $match and $self->{controller}) {
-        $match = $self->{controller}->match($env);
-    }    
+        ($not_exactly, $match) = $self->{controller}->match($env);
+    }
     
     # not found?
     $match ||= {
@@ -230,13 +234,18 @@ sub match {
     
     delete $env->{'psgix.tmp.RouterPathInfo'};
     
-    if ($self->{cache_counter} > $self->{cache_limit}) {
-        $self->{cache_counter} = 0;
-        $self->{cacher} = {};
-    } else {
-        $self->{cache_counter}++;
+    # cache!
+    if (not $not_exactly and $match->{type} eq 'controller') {
+        $self->{_hidden_cache}->{$cache_key} = $match;
+    } elsif ($self->{cache_limit}) {
+        if ($self->{cache_cnt} > $self->{cache_limit}) {
+            $self->{cache_cnt} = 0;
+            $self->{cache} = {};
+        } else {
+            $self->{cache_cnt}++;
+        }
+        $self->{cache}->{$cache_key} = $match;        
     }
-    $self->{cacher}->{$cache_key} = $match; 
     
     # match is done
     return $match;

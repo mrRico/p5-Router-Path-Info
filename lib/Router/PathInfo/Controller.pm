@@ -207,26 +207,27 @@ sub add_rule {
 sub _match {
     my ($self, $reserch, $size_el, @el) = @_;
     my $ret;
+    my $not_exactly = 0;
     my $segment = shift @el;
     $size_el--;
     my $exactly = $reserch->{exactly}->{$segment};
     if (defined $exactly) {
-        $ret = $size_el ? $self->_match($exactly, $size_el, @el) : $exactly->{match};
-        return $ret if $ret; 
+        ($ret, $not_exactly) = $size_el ? $self->_match($exactly, $size_el, @el) : $exactly->{match};
+        return ($ret, $not_exactly) if $ret; 
     };
     
     if ($reserch->{regexp}) {
         for (keys %{$reserch->{regexp}}) {
             if ($segment =~ $self->{re_compile}->{$_}) {
-                $ret = $size_el ? $self->_match($reserch->{regexp}->{$_}, $size_el, @el) : $reserch->{regexp}->{$_}->{match};
-                return $ret if $ret;
+                ($ret) = $size_el ? $self->_match($reserch->{regexp}->{$_}, $size_el, @el) : $reserch->{regexp}->{$_}->{match};
+                return ($ret, 1) if $ret;
             };
         }
     };
     
     if ($reserch->{default}) {
-        $ret = $size_el ? $self->_match($reserch->{default}->{''}, $size_el, @el) : $reserch->{default}->{''}->{match};
-        return $ret if $ret;
+        ($ret) = $size_el ? $self->_match($reserch->{default}->{''}, $size_el, @el) : $reserch->{default}->{''}->{match};
+        return ($ret, 1) if $ret;
     }
     
     return;
@@ -253,7 +254,7 @@ sub match {
     
     my $depth = $env->{'psgix.tmp.RouterPathInfo'}->{depth};
     
-    my $match = $self->_match(
+    my ($match, $not_exactly) = $self->_match(
         $self->{rule}->{$env->{REQUEST_METHOD}}->{$depth}, 
         $depth, 
         @{$env->{'psgix.tmp.RouterPathInfo'}->{segments}}
@@ -266,9 +267,9 @@ sub match {
             segment => $match->[1] ? [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}] : [] 
         };
     	if ($match->[2]) {
-    		return $match->[2]->($ret,$env); 
+    		return ($not_exactly, $match->[2]->($ret,$env)); 
     	} else {
-    		return $ret;
+    		return ($not_exactly, $ret);
     	}
     } else {
     	return;
