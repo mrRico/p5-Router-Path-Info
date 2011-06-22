@@ -85,29 +85,6 @@ use Test::More;
     
     is($res->{action}->[0], 'some', 'check rest');
     
-    # check calback
-    $r->add_rule(
-        connect => '/foo/:enum(bar|baz)/:any', 
-        action => ['any thing'], 
-        methods => ['POST'], 
-        match_callback => sub {
-        	my ($match, $env) = @_;
-        	return $env->{'psgix.memcache'} ? 
-	        	$match :
-	        	{
-			        type  => 'error',
-			        value => [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Forbidden']],
-			        desc  => 'bla-bla'   
-			    };
-        }
-    ); 
-    
-    $res = $r->match($env);
-    is($res->{type}, 'error', 'check callback false psgix.memcache');
-    $env->{'psgix.memcache'} = 1;
-    $res = $r->match($env);
-    is($res->{action}->[0], 'any thing', 'check callback true psgix.memcache');
-    
     pass('*' x 10);
     print "\n";
     done_testing;

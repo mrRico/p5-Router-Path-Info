@@ -2,7 +2,7 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use namespace::autoclean;
 use Carp;
@@ -156,7 +156,7 @@ sub add_rule {
 sub instance        {$as_singletone ? $singleton : carp "singletone not allowed"}
 sub clear_singleton {undef $singleton}
 
-=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => 'GET'})
+=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => $method})
 
 Search match. Initially checked for matches on static, then according to the rules of the controllers.
 In any event returns hashref coincidence or an error.
@@ -209,7 +209,11 @@ sub match {
     # find in cache
     my $cache_key = join('#',$env->{PATH_INFO}, $env->{REQUEST_METHOD});
     my $cache_match = $self->{cache}->{$cache_key} || $self->{_hidden_cache}->{$cache_key};
-    return $cache_match if $cache_match;
+    if ($cache_match) {
+        # only for controller
+        $cache_match = $cache_match->{_callback}->($cache_match,$env) if exists $cache_match->{_callback};
+        return $cache_match;
+    };
     
     my @segment = split '/', $env->{PATH_INFO}, -1; shift @segment;
     $env->{'psgix.tmp.RouterPathInfo'} = {
@@ -250,6 +254,9 @@ sub match {
         }
         $self->{cache}->{$cache_key} = $match;        
     }
+    
+    # only for controller
+    $match = $match->{_callback}->($match,$env) if exists $match->{_callback};
     
     # match is done
     return $match;

@@ -78,6 +78,28 @@ use Test::More;
     is(ref $res->{action}, 'ARRAY', 'check ref action');
     is($res->{action}->[0], 'some', 'check action content 1');
     is($res->{action}->[1], 'bar', 'check action content 2');
+
+    # check calback
+    $pi->add_rule(
+        connect => '/foo/:enum(bar|baz)/:any', 
+        action => ['any thing'], 
+        methods => ['POST'], 
+        match_callback => sub {
+            my ($match, $env) = @_;
+            return $env->{'psgix.memcache'} ? 
+                $match :
+                {
+                    type  => 'error',
+                    value => [403, ['Content-Type' => 'text/plain', 'Content-Length' => 9], ['Forbidden']],
+                    desc  => 'bla-bla'   
+                };
+        }
+    ); 
+    
+    $res = $pi->match({PATH_INFO => '/foo/bar/baz', REQUEST_METHOD => 'POST'});
+    is($res->{type}, 'error', 'check callback false psgix.memcache');
+    $res = $pi->match({PATH_INFO => '/foo/bar/baz', REQUEST_METHOD => 'POST', 'psgix.memcache' => 1});
+    is($res->{action}->[0], 'any thing', 'check callback true psgix.memcache');
     
     
     pass('*' x 10);

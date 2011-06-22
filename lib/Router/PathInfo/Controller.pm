@@ -259,21 +259,33 @@ sub match {
         $depth, 
         @{$env->{'psgix.tmp.RouterPathInfo'}->{segments}}
     );
-    
+
     if ($match) {
-    	my $ret = {
+        my $ret = {
             type => 'controller',
             action => $match->[0],
-            segment => $match->[1] ? [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}] : [] 
+            segment => $match->[1] ? [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}] : []
         };
-    	if ($match->[2]) {
-    		return ($not_exactly, $match->[2]->($ret,$env)); 
-    	} else {
-    		return ($not_exactly, $ret);
-    	}
+        $ret->{_callback} = $match->[2] if $match->[2];
+        return ($not_exactly, $ret);
     } else {
-    	return;
+        return;
     }
+    
+#    if ($match) {
+#    	my $ret = {
+#            type => 'controller',
+#            action => $match->[0],
+#            segment => $match->[1] ? [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}] : [] 
+#        };
+#    	if ($match->[2]) {
+#    		return ($not_exactly, $match->[2]->($ret,$env)); 
+#    	} else {
+#    		return ($not_exactly, $ret);
+#    	}
+#    } else {
+#    	return;
+#    }
     
 }
 

@@ -100,7 +100,7 @@ See C<add_rule> from L<Router::PathInfo::Controller>
 
 =cut
 
-=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => 'GET'})
+=head2 match({PATH_INFO => $path_info, REQUEST_METHOD => $method})
 
 Search match. Initially checked for matches on static, then according to the rules of the controllers.
 In any event returns hashref coincidence or an error.
