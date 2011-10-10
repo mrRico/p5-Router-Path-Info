@@ -19,6 +19,10 @@ B<Router::PathInfo> - PATH_INFO router, based on search trees
 Allows balancing PATH_INFO to static and controllers.
 It has a simple and intuitive interface.
 
+=head1 WARNING
+
+Version less than 0.04 is depricated.
+
 =head1 SYNOPSIS
 
     use Router::PathInfo;
@@ -38,20 +42,10 @@ It has a simple and intuitive interface.
     );
     
     $r->add_rule(
-        connect         => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
+        connect         => '/foo/:enum(bar|baz)/:name(year):re(^\d{4}$)/:any', 
         action          => $some_thing,
         mthods          => ['GET','DELETE'],
         match_callback  => $code_ref
-    );
-    
-    # or
-        
-    $r->add_rule(
-        connect                     => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
-        action                      => $some_thing,
-        mthods                      => ['GET','DELETE'],
-        match_callback              => $code_ref,
-        match_indeterminate_keys    => ['type', 'year', 'token'] 
     );
     
     my $env = {PATH_INFO => '/foo/bar/2011/baz', REQUEST_METHOD => 'GET'};
@@ -63,14 +57,7 @@ It has a simple and intuitive interface.
     # $res = {
     #     type => 'controller',
     #     action => $some, # result call $code_ref->($match, $env)
-    #     segment => ['bar','2011','baz']
-    # }
-    
-    # or if 'match_indeterminate_keys' was defined
-    # $res = {
-    #     type => 'controller',
-    #     action => $some, # result call $code_ref->($match, $env)
-    #     segment => {'type' => 'bar', 'year' => '2011', 'token' => 'baz'}
+    #     name_segments => {'year' => 2011}
     # }
     
     
@@ -196,7 +183,7 @@ Example:
     {
         type => 'controller',
         action => $action,
-        segment => $array_ref_of_segments 
+        name_segments => $hashref_of_names_segments 
     }
     
     {

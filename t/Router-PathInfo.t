@@ -48,8 +48,6 @@ use Test::More;
     is(ref $res->{action}, 'ARRAY', 'check ref action');
     is($res->{action}->[0], 'some', 'check action content 1');
     is($res->{action}->[1], 'bar', 'check action content 2');
-    is($res->{segment}->[0], 'baz', 'check segment 1');
-    is($res->{segment}->[1], 'bar', 'check segment 2');
     
     pass('*' x 10);
     pass('Check static');

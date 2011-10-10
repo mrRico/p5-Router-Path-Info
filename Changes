@@ -11,4 +11,5 @@ Revision history for Perl extension Router::PathInfo.
     - fix bug with callback and cache
 
 0.04  Mon Oct 10 12:26:06 2011    
-    - 'match_indeterminate_keys' have been added
+    - Version less than 0.04 is depricated.
+    - sub-attribute ':name(...)' has been added

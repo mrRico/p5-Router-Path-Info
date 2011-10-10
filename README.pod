@@ -26,7 +26,7 @@ It has a simple and intuitive interface.
     );
         
     $r->add_rule(
-        connect         => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
+        connect         => '/foo/:name(type):enum(bar|baz)/:re(^\d{4}$)/:any', 
         action          => $some_thing,
         mthods          => ['GET','DELETE'],
         match_callback  => $code_ref
@@ -41,7 +41,7 @@ It has a simple and intuitive interface.
     # $res = {
     #     type => 'controller',
     #     action => $some, # result call $code_ref->($match, $env)
-    #     segment => ['bar','2011','baz']
+    #     name_segments => {type => 'bar'}
     # }
     
     $env = {PATH_INFO => '/static/img/some.jpg'};
@@ -122,7 +122,7 @@ Example:
     {
         type => 'controller',
         action => $action,
-        segment => $array_ref_of_segments 
+        type => $hashref_of_names_segments 
     }
     
     {
