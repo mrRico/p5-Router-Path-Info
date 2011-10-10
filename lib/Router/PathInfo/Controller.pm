@@ -141,6 +141,7 @@ sub add_rule {
     my $methods_weight = $#methods; 
     
     my $sub_after_match = $args{match_callback} if ref $args{match_callback} eq 'CODE';
+    my $match_indeterminate_keys = $args{match_indeterminate_keys} if ref $args{match_indeterminate_keys} eq 'ARRAY';
     
     my @depth = split '/',$args{connect},-1;
     
@@ -197,7 +198,7 @@ sub add_rule {
         for (@$res) {
             if (not $_->{match} or $_->{match}->[3] >= $methods_weight) {
                 # set only if no match or a match for a more accurate description
-                $_->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match, $methods_weight];
+                $_->{match} = [$args{action}, $has_segment ? [@segment] : undef, $sub_after_match, $methods_weight, $match_indeterminate_keys];
             }
         }
 
@@ -263,9 +264,20 @@ sub match {
     if ($match) {
         my $ret = {
             type => 'controller',
-            action => $match->[0],
-            segment => $match->[1] ? [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}] : []
+            action => $match->[0]
         };
+        unless ($match->[1]) {
+            $ret->{segment} = [];
+        } elsif ($match->[4] and $#{$match->[4]} eq $#{$match->[1]}) {
+            my $i = 0;
+            for (@{$match->[4]}) {
+                $ret->{segment}->{$_} = $env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$match->[1]->[$i]];
+                $i++;
+            }
+        } else {
+            $ret->{segment} = [map {$env->{'psgix.tmp.RouterPathInfo'}->{segments}->[$_]} @{$match->[1]}];
+        }
+        
         $ret->{_callback} = $match->[2] if $match->[2];
         return ($not_exactly, $ret);
     } else {

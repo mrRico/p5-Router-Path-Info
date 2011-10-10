@@ -2,7 +2,7 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use namespace::autoclean;
 use Carp;
@@ -36,12 +36,22 @@ It has a simple and intuitive interface.
         },
         cache_limit => 300
     );
-        
+    
     $r->add_rule(
         connect         => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
         action          => $some_thing,
         mthods          => ['GET','DELETE'],
         match_callback  => $code_ref
+    );
+    
+    # or
+        
+    $r->add_rule(
+        connect                     => '/foo/:enum(bar|baz)/:re(^\d{4}$)/:any', 
+        action                      => $some_thing,
+        mthods                      => ['GET','DELETE'],
+        match_callback              => $code_ref,
+        match_indeterminate_keys    => ['type', 'year', 'token'] 
     );
     
     my $env = {PATH_INFO => '/foo/bar/2011/baz', REQUEST_METHOD => 'GET'};
@@ -55,6 +65,14 @@ It has a simple and intuitive interface.
     #     action => $some, # result call $code_ref->($match, $env)
     #     segment => ['bar','2011','baz']
     # }
+    
+    # or if 'match_indeterminate_keys' was defined
+    # $res = {
+    #     type => 'controller',
+    #     action => $some, # result call $code_ref->($match, $env)
+    #     segment => {'type' => 'bar', 'year' => '2011', 'token' => 'baz'}
+    # }
+    
     
     $env = {PATH_INFO => '/static/img/some.jpg'};
     
