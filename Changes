@@ -13,3 +13,6 @@ Revision history for Perl extension Router::PathInfo.
 0.04  Mon Oct 10 12:26:06 2011    
     - Version less than 0.04 is depricated.
     - sub-attribute ':name(...)' has been added
+    
+0.05  Fri Oct 14 15:18:23 2011    
+    - Fix critical bug with cache for controller with callback    

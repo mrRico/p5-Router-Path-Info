@@ -94,7 +94,7 @@ use Test::More;
         }
     ); 
     
-    $res = $pi->match({PATH_INFO => '/foo/bar/baz', REQUEST_METHOD => 'POST'});
+    $res = $pi->match({PATH_INFO => '/foo/bar/baz', REQUEST_METHOD => 'POST'});    
     is($res->{type}, 'error', 'check callback false psgix.memcache');
     $res = $pi->match({PATH_INFO => '/foo/bar/baz', REQUEST_METHOD => 'POST', 'psgix.memcache' => 1});
     is($res->{action}->[0], 'any thing', 'check callback true psgix.memcache');

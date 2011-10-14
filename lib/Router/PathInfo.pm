@@ -2,7 +2,7 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use namespace::autoclean;
 use Carp;
@@ -21,7 +21,7 @@ It has a simple and intuitive interface.
 
 =head1 WARNING
 
-Version less than 0.04 is depricated.
+Version less than 0.05 is depricated.
 
 =head1 SYNOPSIS
 
@@ -216,7 +216,7 @@ sub match {
     my $cache_match = $self->{cache}->{$cache_key} || $self->{_hidden_cache}->{$cache_key};
     if ($cache_match) {
         # only for controller
-        $cache_match = $cache_match->{_callback}->($cache_match,$env) if exists $cache_match->{_callback};
+        $cache_match = $cache_match->{_callback}->({%$cache_match},$env) if exists $cache_match->{_callback};
         return $cache_match;
     };
     
@@ -260,8 +260,8 @@ sub match {
         $self->{cache}->{$cache_key} = $match;        
     }
     
-    # only for controller
-    $match = $match->{_callback}->($match,$env) if exists $match->{_callback};
+    # only for controller    
+    $match = $match->{_callback}->({%$match},$env) if exists $match->{_callback};
     
     # match is done
     return $match;
