@@ -2,7 +2,7 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.05';
+our $VERSION = '0.0501';
 
 use namespace::autoclean;
 use Carp;
@@ -21,7 +21,7 @@ It has a simple and intuitive interface.
 
 =head1 WARNING
 
-Version less than 0.05 is depricated.
+Version less than 0.05 is deprecate.
 
 =head1 SYNOPSIS
 

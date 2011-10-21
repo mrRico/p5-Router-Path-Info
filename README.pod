@@ -7,6 +7,10 @@ B<Router::PathInfo> - PATH_INFO router, based on search trees
 Allows balancing PATH_INFO to static and controllers.
 It has a simple and intuitive interface.
 
+=head1 WARNING
+
+Version less than 0.05 is deprecate.
+
 =head1 SYNOPSIS
 
     use Router::PathInfo;
@@ -24,9 +28,9 @@ It has a simple and intuitive interface.
         },
         cache_limit => 300
     );
-        
+    
     $r->add_rule(
-        connect         => '/foo/:name(type):enum(bar|baz)/:re(^\d{4}$)/:any', 
+        connect         => '/foo/:enum(bar|baz)/:name(year):re(^\d{4}$)/:any', 
         action          => $some_thing,
         mthods          => ['GET','DELETE'],
         match_callback  => $code_ref
@@ -41,8 +45,9 @@ It has a simple and intuitive interface.
     # $res = {
     #     type => 'controller',
     #     action => $some, # result call $code_ref->($match, $env)
-    #     name_segments => {type => 'bar'}
+    #     name_segments => {'year' => 2011}
     # }
+    
     
     $env = {PATH_INFO => '/static/img/some.jpg'};
     
@@ -72,14 +77,9 @@ You can pick up directly, or:
     
 If you decide to work in singletone mode, raise the flag before the call to C<new>. 
 
-=cut
-
 =head1 SINGLETON
 
 When you work in a mode singletone, you have access to methods: C<instance> and C<clear_singleton>
-
-=cut
-
 
 =head1 METHODS
 
@@ -92,13 +92,9 @@ static - it hashref arguments for the constructor L<Router::PathInfo::Static>
 cache_limit - limit of matches stored by the rules contain tokens C<:re> and C<:any>, statics and errors. By default - 200.
 All matches (that occur on an accurate description) cached without limit.
 
-=cut
-
 =head2 add_rule
 
 See C<add_rule> from L<Router::PathInfo::Controller>
-
-=cut
 
 =head2 match({PATH_INFO => $path_info, REQUEST_METHOD => $method})
 
@@ -122,7 +118,7 @@ Example:
     {
         type => 'controller',
         action => $action,
-        type => $hashref_of_names_segments 
+        name_segments => $hashref_of_names_segments 
     }
     
     {
@@ -130,8 +126,6 @@ Example:
         file  => $serch_file,
         mime  => $mime_type
     }
-
-=cut
 
 =head1 SOURSE
 
