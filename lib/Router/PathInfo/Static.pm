@@ -88,7 +88,6 @@ Return C<undef> means that it makes sense to continue search of L<Router::PathIn
 
 =cut
 
-use namespace::autoclean;
 use Plack::MIME;
 use File::Spec;
 use File::MimeInfo::Magic qw(mimetype);
@@ -151,6 +150,20 @@ sub match {
 
     my $serch_file = pop @segment;
     return unless ($serch_file and @segment);
+    
+    if ($serch_file eq 'favicon.ico') {
+        # exclude for root favicon
+        $serch_file = File::Spec->catfile($self->{'allready_path'}, $serch_file);
+        return -e $serch_file ? {
+            type  => 'static',
+            file  => $serch_file,
+            mime  => Plack::MIME->mime_type($serch_file) || mimetype($serch_file) 
+        } : {
+            type  => 'error',
+            code => 404,
+            desc  => sprintf('not found static for PATH_INFO = %s', $env->{PATH_INFO})
+        };
+    }
     
     # проверим первый сегмент uri на принадлежность к статике
     my $type = $self->_type_uri(shift @segment);

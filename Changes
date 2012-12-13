@@ -16,3 +16,6 @@ Revision history for Perl extension Router::PathInfo.
     
 0.05  Fri Oct 14 15:18:23 2011    
     - Fix critical bug with cache for controller with callback    
+    
+0.0502 Thu Dec 13 18:35:18 2012
+    - Exclude for a root favicon was added

@@ -77,7 +77,6 @@ In C<action> you can pass any value: object, arrayref, hashref or a scalar.
 
 =cut
 
-use namespace::autoclean;
 use Carp;
 
 my $http_methods = {

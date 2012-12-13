@@ -2,9 +2,8 @@ package Router::PathInfo;
 use strict;
 use warnings;
 
-our $VERSION = '0.0501';
+our $VERSION = '0.0502';
 
-use namespace::autoclean;
 use Carp;
 
 use Router::PathInfo::Controller;
