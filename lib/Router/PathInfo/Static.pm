@@ -149,9 +149,7 @@ sub match {
     my @segment = @{$env->{'psgix.tmp.RouterPathInfo'}->{segments}};
 
     my $serch_file = pop @segment;
-    return unless ($serch_file and @segment);
-    
-    if ($serch_file eq 'favicon.ico') {
+    if ($serch_file eq 'favicon.ico' and not @segment) {
         # exclude for root favicon
         $serch_file = File::Spec->catfile($self->{'allready_path'}, $serch_file);
         return -e $serch_file ? {
@@ -164,6 +162,8 @@ sub match {
             desc  => sprintf('not found static for PATH_INFO = %s', $env->{PATH_INFO})
         };
     }
+    
+    return unless ($serch_file and @segment);
     
     # проверим первый сегмент uri на принадлежность к статике
     my $type = $self->_type_uri(shift @segment);
